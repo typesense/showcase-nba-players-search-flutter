@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:typesense/typesense.dart';
 
 void main() {
   runApp(const MyApp());
@@ -13,25 +15,17 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Flutter Demo',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: const ColorScheme.light(),
         useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Typesense - Dart language'),
+      home: const MyHomePage(title: 'Typesense - Dart'),
+      debugShowCheckedModeBanner: false,
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
 
   final String title;
 
@@ -40,12 +34,47 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  fetch() async {
+//    final host = InternetAddress.loopbackIPv4.address, protocol = Protocol.http;
+    final config = Configuration(
+      // Api key
+      'xyz',
+      nodes: {
+        Node.withUri(
+          Uri(
+            scheme: 'http',
+            host: '192.168.1.11',
+            port: 8108,
+          ),
+        ),
+      },
+      numRetries: 3, // A total of 4 tries (1 original try + 3 retries)
+      connectionTimeout: const Duration(seconds: 2),
+    );
+
+    final client = Client(config);
+
+    final searchParameters = {
+      'q': 'hello',
+      'query_by': 'title',
+    };
+    try {
+      print(await client
+          .collection('podcasts')
+          .documents
+          .search(searchParameters));
+    } catch (e) {
+      print(e);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text(widget.title),
+        centerTitle: true,
+        backgroundColor: Colors.white,
       ),
       body: Center(
         child: Column(
@@ -64,12 +93,20 @@ class _MyHomePageState extends State<MyHomePage> {
                 decoration: InputDecoration(
                   fillColor: Colors.white,
                   filled: true,
+                  prefixIcon: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: SvgPicture.asset('assets/icons/Search.svg'),
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(15),
                     borderSide: BorderSide.none,
                   ),
                 ),
               ),
+            ),
+            ElevatedButton(
+              onPressed: fetch,
+              child: const Text('Fetch'),
             ),
           ],
         ),
