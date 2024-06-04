@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:showcase_typesense_flutter/models/nba_player.dart';
 import 'package:typesense/typesense.dart';
 import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
+import './utils/nba_team_color.dart';
 
 void main() {
   runApp(const MyApp());
@@ -17,7 +18,17 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Flutter Demo',
       theme: ThemeData(
-        colorScheme: const ColorScheme.light(),
+        colorScheme: const ColorScheme(
+          brightness: Brightness.light,
+          primary: Colors.black,
+          onPrimary: Colors.white,
+          secondary: Colors.white,
+          onSecondary: Colors.black,
+          error: Colors.red,
+          onError: Colors.white,
+          surface: Colors.white,
+          onSurface: Colors.black,
+        ),
         useMaterial3: true,
       ),
       home: const MyHomePage(title: 'Typesense - Dart'),
@@ -114,45 +125,52 @@ class _MyHomePageState extends State<MyHomePage> {
         centerTitle: true,
         backgroundColor: Colors.white,
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            Container(
-              margin: const EdgeInsets.only(top: 40, left: 20, right: 20),
-              decoration: BoxDecoration(boxShadow: [
-                BoxShadow(
-                  color: const Color(0xff1D1617).withOpacity(0.11),
-                  blurRadius: 40,
-                  spreadRadius: 0,
+      body: Flexible(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 768),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  margin: const EdgeInsets.only(top: 40, left: 20, right: 20),
+                  decoration: BoxDecoration(boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xff1D1617).withOpacity(0.11),
+                      blurRadius: 40,
+                      spreadRadius: 0,
+                    ),
+                  ]),
+                  child: TextField(
+                    controller: _searchInputController,
+                    onSubmitted: (String value) {
+                      setState(() {
+                        query = _searchInputController.text;
+                        _pagingController.refresh();
+                      });
+                    },
+                    decoration: InputDecoration(
+                      fillColor: Colors.white,
+                      filled: true,
+                      prefixIcon: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: SvgPicture.asset('assets/icons/Search.svg'),
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(15),
+                        borderSide: BorderSide.none,
+                      ),
+                      hintText: 'Search NBA player name...',
+                    ),
+                  ),
                 ),
-              ]),
-              child: TextField(
-                controller: _searchInputController,
-                onSubmitted: (String value) {
-                  setState(() {
-                    query = _searchInputController.text;
-                    _pagingController.refresh();
-                  });
-                },
-                decoration: InputDecoration(
-                    fillColor: Colors.white,
-                    filled: true,
-                    prefixIcon: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: SvgPicture.asset('assets/icons/Search.svg'),
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(15),
-                      borderSide: BorderSide.none,
-                    ),
-                    hintText: 'Search NBA player name...'),
-              ),
+                Expanded(
+                  child: _infiniteHitsListView(context),
+                )
+              ],
             ),
-            Expanded(
-              child: _infiniteHitsListView(context),
-            )
-          ],
+          ),
         ),
       ),
     );
@@ -172,15 +190,75 @@ class _MyHomePageState extends State<MyHomePage> {
             height: 16,
           ),
           builderDelegate: PagedChildBuilderDelegate<NBAPlayer>(
-            itemBuilder: (context, item, index) => ListTile(
-              title: Text(item.playerName),
-            ),
+            itemBuilder: (context, item, index) {
+              final teamColor = colors[item.team]?['rgb'];
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Row(
+                        children: [
+                          Chip(
+                            label: Text(
+                              item.team,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.white,
+                              ),
+                            ),
+                            backgroundColor: Color.fromRGBO(
+                                teamColor[0], teamColor[1], teamColor[2], 1),
+                            padding: const EdgeInsets.all(0),
+                          ),
+                          const SizedBox(
+                            width: 10,
+                          ),
+                          Text(
+                            item.playerName,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      MutedText(
+                        item.season,
+                      )
+                    ],
+                  ),
+                  const SizedBox(height: 15),
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    children: [
+                      MutedText(
+                          '${covertCMToFeet(item.height)} (${(item.height / 100).toStringAsFixed(2)}m) / ${(item.weight * 2.2046).round()}lbs (${item.weight.round()}kg)'),
+                      Wrap(
+                        spacing: 20,
+                        children: [
+                          Text('PTS: ${item.pts}'),
+                          Text('REB: ${item.reb}'),
+                          Text('AST: ${item.ast}'),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              );
+            },
+
             // firstPageErrorIndicatorBuilder: (context) => ErrorIndicator(
             //   error: _pagingController.error,
             //   onTryAgain: () => _pagingController.refresh(),
             // ),
-            noItemsFoundIndicatorBuilder: (context) =>
-                const Text('Could not find players!'),
+            noMoreItemsIndicatorBuilder: (context) => const Center(
+                child: Text(
+              'That\'s all!',
+            )),
+            noItemsFoundIndicatorBuilder: (context) => const Center(
+                child: Text(
+              'No results found!',
+            )),
           ),
         ),
       );
@@ -191,4 +269,24 @@ class _MyHomePageState extends State<MyHomePage> {
     _searchInputController.dispose();
     super.dispose();
   }
+}
+
+class MutedText extends Text {
+  const MutedText(
+    super.data, {
+    super.key,
+    style,
+  }) : super(
+          style: const TextStyle(
+            color: Colors.grey,
+            fontSize: 12,
+          ),
+        );
+}
+
+covertCMToFeet(double n) {
+  var realFeet = ((n * 0.393700) / 12);
+  var feet = realFeet.floor();
+  var inches = ((realFeet - feet) * 12).floor();
+  return '$feet\'$inches"';
 }
