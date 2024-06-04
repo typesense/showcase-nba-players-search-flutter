@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:showcase_typesense_flutter/models/nba_player.dart';
 import 'package:typesense/typesense.dart';
+import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
 
 void main() {
   runApp(const MyApp());
@@ -34,37 +36,73 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  fetch() async {
-//    final host = InternetAddress.loopbackIPv4.address, protocol = Protocol.http;
-    final config = Configuration(
-      // Api key
-      'xyz',
-      nodes: {
-        Node.withUri(
-          Uri(
-            scheme: 'http',
-            host: '192.168.1.11',
-            port: 8108,
-          ),
+  final _searchInputController = TextEditingController();
+
+  String query = '*';
+  int pageKey = 1;
+
+  static const _pageSize = 20;
+
+  final _pagingController = PagingController<int, NBAPlayer>(firstPageKey: 1);
+  final config = Configuration(
+    // Api key
+    'xyz',
+    nodes: {
+      Node.withUri(
+        Uri(
+          scheme: 'http',
+          host: '192.168.1.9',
+          port: 8108,
         ),
-      },
-      numRetries: 3, // A total of 4 tries (1 original try + 3 retries)
-      connectionTimeout: const Duration(seconds: 2),
-    );
+      ),
+    },
+    numRetries: 3, // A total of 4 tries (1 original try + 3 retries)
+    connectionTimeout: const Duration(seconds: 2),
+  );
 
-    final client = Client(config);
+  Client? client;
 
-    final searchParameters = {
-      'q': 'hello',
-      'query_by': 'title',
-    };
+  @override
+  void initState() {
+    _searchInputController
+        .addListener(() => print(_searchInputController.text));
+
+    _pagingController.addPageRequestListener((pagingControllerPageKey) {
+      pageKey = pagingControllerPageKey;
+      _fetchPage();
+    });
+    client = Client(config);
+
+    super.initState();
+  }
+
+  Future<void> _fetchPage() async {
     try {
-      print(await client
-          .collection('podcasts')
+      final searchParameters = {
+        'q': query,
+        'query_by': 'player_name',
+        'page': '$pageKey',
+        'per_page': '$_pageSize',
+      };
+      final res = await client
+          ?.collection('nba_players')
           .documents
-          .search(searchParameters));
-    } catch (e) {
-      print(e);
+          .search(searchParameters);
+      print(res);
+      final newItems = res?['hits']
+          .map<NBAPlayer>((item) => NBAPlayer.fromJson(item['document']))
+          .toList();
+      final isLastPage = newItems.length < _pageSize;
+      if (isLastPage) {
+        _pagingController.appendLastPage(newItems);
+      } else {
+        final nextPageKey = pageKey + 1;
+        _pagingController.appendPage(newItems, nextPageKey);
+      }
+      print(_pagingController);
+    } catch (error) {
+      print(error);
+      _pagingController.error = error;
     }
   }
 
@@ -90,27 +128,67 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
               ]),
               child: TextField(
+                controller: _searchInputController,
+                onSubmitted: (String value) {
+                  setState(() {
+                    query = _searchInputController.text;
+                    _pagingController.refresh();
+                  });
+                },
                 decoration: InputDecoration(
-                  fillColor: Colors.white,
-                  filled: true,
-                  prefixIcon: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: SvgPicture.asset('assets/icons/Search.svg'),
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(15),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
+                    fillColor: Colors.white,
+                    filled: true,
+                    prefixIcon: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: SvgPicture.asset('assets/icons/Search.svg'),
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                      borderSide: BorderSide.none,
+                    ),
+                    hintText: 'Search NBA player name...'),
               ),
             ),
-            ElevatedButton(
-              onPressed: fetch,
-              child: const Text('Fetch'),
-            ),
+            Expanded(
+              child: _infiniteHitsListView(context),
+            )
           ],
         ),
       ),
     );
+  }
+
+  Widget _infiniteHitsListView(BuildContext context) => RefreshIndicator(
+        onRefresh: () => Future.sync(
+          // 2
+          () => _pagingController.refresh(),
+        ),
+        // 3
+        child: PagedListView.separated(
+          // 4
+          pagingController: _pagingController,
+          padding: const EdgeInsets.all(16),
+          separatorBuilder: (context, index) => const SizedBox(
+            height: 16,
+          ),
+          builderDelegate: PagedChildBuilderDelegate<NBAPlayer>(
+            itemBuilder: (context, item, index) => ListTile(
+              title: Text(item.playerName),
+            ),
+            // firstPageErrorIndicatorBuilder: (context) => ErrorIndicator(
+            //   error: _pagingController.error,
+            //   onTryAgain: () => _pagingController.refresh(),
+            // ),
+            noItemsFoundIndicatorBuilder: (context) =>
+                const Text('Could not find players!'),
+          ),
+        ),
+      );
+
+  @override
+  void dispose() {
+    _pagingController.dispose();
+    _searchInputController.dispose();
+    super.dispose();
   }
 }
