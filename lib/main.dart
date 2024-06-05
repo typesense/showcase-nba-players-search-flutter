@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:showcase_typesense_flutter/models/nba_player.dart';
+import 'package:showcase_typesense_flutter/widgets/nba_player_list_item.dart';
 import 'package:typesense/typesense.dart';
 import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
 import './utils/nba_team_color.dart';
@@ -134,14 +135,8 @@ class _MyHomePageState extends State<MyHomePage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Container(
-                  margin: const EdgeInsets.only(top: 40, left: 20, right: 20),
-                  decoration: BoxDecoration(boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xff1D1617).withOpacity(0.11),
-                      blurRadius: 40,
-                      spreadRadius: 0,
-                    ),
-                  ]),
+                  margin: const EdgeInsets.only(
+                      top: 20, left: 16, right: 16, bottom: 14),
                   child: TextField(
                     controller: _searchInputController,
                     onSubmitted: (String value) {
@@ -157,11 +152,18 @@ class _MyHomePageState extends State<MyHomePage> {
                         padding: const EdgeInsets.all(12),
                         child: SvgPicture.asset('assets/icons/Search.svg'),
                       ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(15),
-                        borderSide: BorderSide.none,
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(width: 1.5),
                       ),
-                      hintText: 'Search NBA player name...',
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(width: 1.5),
+                      ),
+                      hintText: 'Type in an NBA player name...',
+                    ),
+                    style: const TextStyle(
+                      fontSize: 14,
                     ),
                   ),
                 ),
@@ -190,62 +192,8 @@ class _MyHomePageState extends State<MyHomePage> {
             height: 16,
           ),
           builderDelegate: PagedChildBuilderDelegate<NBAPlayer>(
-            itemBuilder: (context, item, index) {
-              final teamColor = colors[item.team]?['rgb'];
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Row(
-                        children: [
-                          Chip(
-                            label: Text(
-                              item.team,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.white,
-                              ),
-                            ),
-                            backgroundColor: Color.fromRGBO(
-                                teamColor[0], teamColor[1], teamColor[2], 1),
-                            padding: const EdgeInsets.all(0),
-                          ),
-                          const SizedBox(
-                            width: 10,
-                          ),
-                          Text(
-                            item.playerName,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                      MutedText(
-                        item.season,
-                      )
-                    ],
-                  ),
-                  const SizedBox(height: 15),
-                  Wrap(
-                    alignment: WrapAlignment.spaceBetween,
-                    children: [
-                      MutedText(
-                          '${covertCMToFeet(item.height)} (${(item.height / 100).toStringAsFixed(2)}m) / ${(item.weight * 2.2046).round()}lbs (${item.weight.round()}kg)'),
-                      Wrap(
-                        spacing: 20,
-                        children: [
-                          Text('PTS: ${item.pts}'),
-                          Text('REB: ${item.reb}'),
-                          Text('AST: ${item.ast}'),
-                        ],
-                      ),
-                    ],
-                  ),
-                ],
-              );
-            },
+            itemBuilder: (context, item, index) =>
+                NbaPlayerListItem(player: item),
 
             // firstPageErrorIndicatorBuilder: (context) => ErrorIndicator(
             //   error: _pagingController.error,
@@ -269,24 +217,4 @@ class _MyHomePageState extends State<MyHomePage> {
     _searchInputController.dispose();
     super.dispose();
   }
-}
-
-class MutedText extends Text {
-  const MutedText(
-    super.data, {
-    super.key,
-    style,
-  }) : super(
-          style: const TextStyle(
-            color: Colors.grey,
-            fontSize: 12,
-          ),
-        );
-}
-
-covertCMToFeet(double n) {
-  var realFeet = ((n * 0.393700) / 12);
-  var feet = realFeet.floor();
-  var inches = ((realFeet - feet) * 12).floor();
-  return '$feet\'$inches"';
 }

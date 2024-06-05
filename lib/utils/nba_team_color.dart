@@ -1,5 +1,5 @@
 // There are some teams that currently are not in the NBA, for ex: seattle supersonics
-Map<String, Map<String, dynamic>> colors = {
+Map<String, Map<String, dynamic>> nbaTeamColors = {
   'ATL': {
     'hex': '#c8102e',
     'rgb': [200, 16, 46],
