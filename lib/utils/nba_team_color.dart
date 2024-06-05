@@ -1,3 +1,4 @@
+// There are some teams that currently are not in the NBA, for ex: seattle supersonics
 Map<String, Map<String, dynamic>> colors = {
   'ATL': {
     'hex': '#c8102e',
@@ -7,14 +8,26 @@ Map<String, Map<String, dynamic>> colors = {
     'hex': '#010101',
     'rgb': [1, 1, 1],
   },
+  // Nets
+  'NJN': {
+    'hex': '#010101',
+    'rgb': [1, 1, 1],
+  },
+
   'BOS': {
     'hex': '#007a33',
     'rgb': [0, 122, 51],
   },
+  // hornets
   'CHH': {
     'hex': '#201747',
     'rgb': [32, 23, 71],
   },
+  'CHA': {
+    'hex': '#201747',
+    'rgb': [32, 23, 71],
+  },
+
   'CHI': {
     'hex': '#ba0c2f',
     'rgb': [186, 12, 47],
@@ -59,6 +72,12 @@ Map<String, Map<String, dynamic>> colors = {
     'hex': '#23375b',
     'rgb': [35, 55, 91],
   },
+  // Vancouver Grizzlies
+  'VAN': {
+    'hex': '##4eada0',
+    'rgb': [78, 173, 160],
+  },
+
   'MIA': {
     'hex': '#862633',
     'rgb': [134, 38, 51],
@@ -71,10 +90,20 @@ Map<String, Map<String, dynamic>> colors = {
     'hex': '#002b5c',
     'rgb': [0, 42, 92],
   },
+  // Pelicans
+  'NOH': {
+    'hex': '#002b5c',
+    'rgb': [0, 43, 92],
+  },
+  'NOK': {
+    'hex': '#002b5c',
+    'rgb': [0, 43, 92],
+  },
   'NOP': {
     'hex': '#002b5c',
     'rgb': [0, 43, 92],
   },
+
   'NYK': {
     'hex': '#003da5',
     'rgb': [0, 61, 165],
@@ -106,6 +135,10 @@ Map<String, Map<String, dynamic>> colors = {
   'SAS': {
     'hex': '#b6bfbf',
     'rgb': [182, 191, 191],
+  },
+  'SEA': {
+    'hex': '#f7bb20',
+    'rgb': [247, 187, 32],
   },
   'TOR': {
     'hex': '#ce1141',
