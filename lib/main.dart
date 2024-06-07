@@ -13,8 +13,6 @@ void main() {
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -52,12 +50,12 @@ class _MyHomePageState extends State<MyHomePage> {
   final _searchInputController = TextEditingController();
 
   String query = '*';
-  int pageKey = 1;
 
   static const _pageSize = 20;
 
   final _pagingController = PagingController<int, NBAPlayer>(firstPageKey: 1);
-  final config = Configuration(
+
+  final client = Client(Configuration(
     // Api key
     'xyz',
     nodes: {
@@ -71,25 +69,16 @@ class _MyHomePageState extends State<MyHomePage> {
     },
     numRetries: 3, // A total of 4 tries (1 original try + 3 retries)
     connectionTimeout: const Duration(seconds: 2),
-  );
-
-  Client? client;
+  ));
 
   @override
   void initState() {
-    _searchInputController
-        .addListener(() => print(_searchInputController.text));
-
-    _pagingController.addPageRequestListener((pagingControllerPageKey) {
-      pageKey = pagingControllerPageKey;
-      _fetchPage();
-    });
-    client = Client(config);
+    _pagingController.addPageRequestListener((pageKey) => _fetchPage(pageKey));
 
     super.initState();
   }
 
-  Future<void> _fetchPage() async {
+  Future<void> _fetchPage(pageKey) async {
     try {
       final searchParameters = {
         'q': query,
@@ -98,11 +87,10 @@ class _MyHomePageState extends State<MyHomePage> {
         'per_page': '$_pageSize',
       };
       final res = await client
-          ?.collection('nba_players')
+          .collection('nba_players')
           .documents
           .search(searchParameters);
-      print(res);
-      final newItems = res?['hits']
+      final newItems = res['hits']
           .map<NBAPlayer>((item) => NBAPlayer.fromJson(item['document']))
           .toList();
       final isLastPage = newItems.length < _pageSize;
@@ -112,9 +100,7 @@ class _MyHomePageState extends State<MyHomePage> {
         final nextPageKey = pageKey + 1;
         _pagingController.appendPage(newItems, nextPageKey);
       }
-      print(_pagingController);
     } catch (error) {
-      print(error);
       _pagingController.error = error;
     }
   }
@@ -226,10 +212,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Widget _infiniteHitsListView(BuildContext context) => RefreshIndicator(
         onRefresh: () => Future.sync(
-          // 2
           () => _pagingController.refresh(),
         ),
-        // 3
         child: PagedListView.separated(
           // 4
           pagingController: _pagingController,
@@ -240,11 +224,6 @@ class _MyHomePageState extends State<MyHomePage> {
           builderDelegate: PagedChildBuilderDelegate<NBAPlayer>(
             itemBuilder: (context, item, index) =>
                 NbaPlayerListItem(player: item),
-
-            // firstPageErrorIndicatorBuilder: (context) => ErrorIndicator(
-            //   error: _pagingController.error,
-            //   onTryAgain: () => _pagingController.refresh(),
-            // ),
             noMoreItemsIndicatorBuilder: (context) => const Center(
                 child: Text(
               'That\'s all!',
