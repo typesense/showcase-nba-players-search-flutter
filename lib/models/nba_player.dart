@@ -6,7 +6,6 @@ class NBAPlayer {
     required this.season,
     required this.height,
     required this.weight,
-    required this.college,
     required this.draftYear,
     required this.gp,
     required this.pts,
@@ -21,7 +20,6 @@ class NBAPlayer {
         season: json['season'],
         height: json['player_height'],
         weight: json['player_weight'],
-        college: json['college'],
         draftYear: json['draft_year'],
         gp: json['gp'],
         pts: json['pts'],
@@ -35,7 +33,6 @@ class NBAPlayer {
   final String season;
   final double height;
   final double weight;
-  final String? college;
   final String draftYear;
 
   final double gp;
