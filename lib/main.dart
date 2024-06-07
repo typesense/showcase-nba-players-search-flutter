@@ -4,7 +4,8 @@ import 'package:showcase_typesense_flutter/models/nba_player.dart';
 import 'package:showcase_typesense_flutter/widgets/nba_player_list_item.dart';
 import 'package:typesense/typesense.dart';
 import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
-import './utils/nba_team_color.dart';
+import 'package:flutter/gestures.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 void main() {
   runApp(const MyApp());
@@ -23,16 +24,16 @@ class MyApp extends StatelessWidget {
           brightness: Brightness.light,
           primary: Colors.black,
           onPrimary: Colors.white,
-          secondary: Colors.white,
+          secondary: Color(0xffd90368),
           onSecondary: Colors.black,
           error: Colors.red,
           onError: Colors.white,
-          surface: Colors.white,
+          surface: Color.fromARGB(255, 255, 253, 246),
           onSurface: Colors.black,
         ),
         useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Typesense - Dart'),
+      home: const MyHomePage(title: 'Search NBA players\' stats'),
       debugShowCheckedModeBanner: false,
     );
   }
@@ -121,10 +122,55 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-        centerTitle: true,
-        backgroundColor: Colors.white,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(100),
+        child: AppBar(
+          title: Column(
+            children: [
+              Text(
+                widget.title,
+                style:
+                    const TextStyle(fontSize: 24, fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 6),
+              Text.rich(
+                TextSpan(
+                  style: const TextStyle(
+                    fontSize: 12,
+                  ),
+                  children: [
+                    const TextSpan(text: 'powered by '),
+                    TextSpan(
+                      text: 'Typesense',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.secondary,
+                      ),
+                      recognizer: TapGestureRecognizer()
+                        ..onTap = () {
+                          openLink('https://typesense.org/');
+                        },
+                    ),
+                    const TextSpan(text: ' & '),
+                    TextSpan(
+                      text: 'Flutter',
+                      style: const TextStyle(
+                        color: Color(0xff0468d7),
+                      ),
+                      recognizer: TapGestureRecognizer()
+                        ..onTap = () {
+                          openLink('https://flutter.dev/');
+                        },
+                    ),
+                  ],
+                ),
+              )
+            ],
+          ),
+          toolbarHeight: 100,
+          scrolledUnderElevation: 0,
+          centerTitle: true,
+          backgroundColor: Theme.of(context).colorScheme.surface,
+        ),
       ),
       body: Flexible(
         child: Center(
@@ -135,8 +181,8 @@ class _MyHomePageState extends State<MyHomePage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Container(
-                  margin: const EdgeInsets.only(
-                      top: 20, left: 16, right: 16, bottom: 14),
+                  margin:
+                      const EdgeInsets.only(left: 16, right: 16, bottom: 14),
                   child: TextField(
                     controller: _searchInputController,
                     onSubmitted: (String value) {
@@ -146,7 +192,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       });
                     },
                     decoration: InputDecoration(
-                      fillColor: Colors.white,
+                      fillColor: Theme.of(context).colorScheme.surface,
                       filled: true,
                       prefixIcon: Padding(
                         padding: const EdgeInsets.all(12),
@@ -217,4 +263,9 @@ class _MyHomePageState extends State<MyHomePage> {
     _searchInputController.dispose();
     super.dispose();
   }
+}
+
+Future<void> openLink(String url) async {
+  final Uri uri = Uri.parse(url);
+  await launchUrl(uri);
 }

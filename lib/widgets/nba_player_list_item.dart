@@ -47,9 +47,21 @@ class NbaPlayerListItem extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        player.playerName,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      Text.rich(
+                        TextSpan(
+                          children: [
+                            TextSpan(
+                              text: '${player.playerName} ',
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            TextSpan(
+                              text: player.country,
+                              style: const TextStyle(
+                                  fontSize: 10, color: Colors.grey),
+                            ),
+                          ],
+                        ),
                       ),
                       Text(
                         player.draftYear != 'Undrafted'
