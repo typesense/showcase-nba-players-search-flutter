@@ -23,7 +23,7 @@ void main() async {
   final client = Client(config);
 
   try {
-    await client.collection('companies').retrieve();
+    await client.collection(collectionName).retrieve();
     print('Found existing collection of $collectionName');
     print('Deleting collection');
     await client.collection(collectionName).delete();
