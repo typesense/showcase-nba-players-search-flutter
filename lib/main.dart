@@ -13,6 +13,7 @@ void main() {
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -47,6 +48,8 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  final GlobalKey<ScaffoldState> _key = GlobalKey(); // Create a key
+
   final _searchInputController = TextEditingController();
 
   String query = '*';
@@ -62,7 +65,7 @@ class _MyHomePageState extends State<MyHomePage> {
       Node.withUri(
         Uri(
           scheme: 'http',
-          host: '192.168.1.9',
+          host: '192.168.1.9', // replace with your wifi IPV4 address
           port: 8108,
         ),
       ),
@@ -78,6 +81,8 @@ class _MyHomePageState extends State<MyHomePage> {
     super.initState();
   }
 
+// Future _facetState = Future.value([]);
+
   Future<void> _fetchPage(pageKey) async {
     try {
       final searchParameters = {
@@ -85,11 +90,21 @@ class _MyHomePageState extends State<MyHomePage> {
         'query_by': 'player_name',
         'page': '$pageKey',
         'per_page': '$_pageSize',
+        'facet_by': 'team_abbreviation,country,season'
       };
       final res = await client
           .collection('nba_players')
           .documents
           .search(searchParameters);
+      // facets
+      // setState(() {
+      //         _facetState = (
+      //   facetCounts: res['facet_counts'],
+      //   filterBy: 'brand',
+      // );
+
+      // });
+
       final newItems = res['hits']
           .map<NBAPlayer>((item) => NBAPlayer.fromJson(item['document']))
           .toList();
@@ -102,61 +117,20 @@ class _MyHomePageState extends State<MyHomePage> {
       }
     } catch (error) {
       _pagingController.error = error;
+      print(error);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _key,
+      endDrawer: Drawer(
+        child: _filters(context),
+      ),
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(100),
-        child: AppBar(
-          title: Column(
-            children: [
-              Text(
-                widget.title,
-                style:
-                    const TextStyle(fontSize: 24, fontWeight: FontWeight.w500),
-              ),
-              const SizedBox(height: 6),
-              Text.rich(
-                TextSpan(
-                  style: const TextStyle(
-                    fontSize: 12,
-                  ),
-                  children: [
-                    const TextSpan(text: 'powered by '),
-                    TextSpan(
-                      text: 'Typesense',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.secondary,
-                      ),
-                      recognizer: TapGestureRecognizer()
-                        ..onTap = () {
-                          openLink('https://typesense.org/');
-                        },
-                    ),
-                    const TextSpan(text: ' & '),
-                    TextSpan(
-                      text: 'Flutter',
-                      style: const TextStyle(
-                        color: Color(0xff0468d7),
-                      ),
-                      recognizer: TapGestureRecognizer()
-                        ..onTap = () {
-                          openLink('https://flutter.dev/');
-                        },
-                    ),
-                  ],
-                ),
-              )
-            ],
-          ),
-          toolbarHeight: 100,
-          scrolledUnderElevation: 0,
-          centerTitle: true,
-          backgroundColor: Theme.of(context).colorScheme.surface,
-        ),
+        child: appBar(context),
       ),
       body: Flexible(
         child: Center(
@@ -181,8 +155,16 @@ class _MyHomePageState extends State<MyHomePage> {
                       fillColor: Theme.of(context).colorScheme.surface,
                       filled: true,
                       prefixIcon: Padding(
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.only(
+                            top: 12, bottom: 12, left: 14, right: 14),
                         child: SvgPicture.asset('assets/icons/Search.svg'),
+                      ),
+                      suffixIcon: Padding(
+                        padding: const EdgeInsets.all(4),
+                        child: IconButton(
+                          icon: SvgPicture.asset('assets/icons/Filter.svg'),
+                          onPressed: () => _key.currentState!.openEndDrawer(),
+                        ),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
@@ -209,6 +191,85 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
     );
   }
+
+  AppBar appBar(BuildContext context) {
+    return AppBar(
+      title: Column(
+        children: [
+          Text(
+            widget.title,
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(height: 6),
+          Text.rich(
+            TextSpan(
+              style: const TextStyle(
+                fontSize: 12,
+              ),
+              children: [
+                const TextSpan(text: 'powered by '),
+                TextSpan(
+                  text: 'Typesense',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.secondary,
+                  ),
+                  recognizer: TapGestureRecognizer()
+                    ..onTap = () {
+                      openLink('https://typesense.org/');
+                    },
+                ),
+                const TextSpan(text: ' & '),
+                TextSpan(
+                  text: 'Flutter',
+                  style: const TextStyle(
+                    color: Color(0xff0468d7),
+                  ),
+                  recognizer: TapGestureRecognizer()
+                    ..onTap = () {
+                      openLink('https://flutter.dev/');
+                    },
+                ),
+              ],
+            ),
+          )
+        ],
+      ),
+      toolbarHeight: 100,
+      scrolledUnderElevation: 0,
+      centerTitle: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      actions: <Widget>[Container()], // this will hide endDrawer hamburger icon
+    );
+  }
+
+  Widget _filters(BuildContext context) => Scaffold(
+        appBar: AppBar(
+          title: const Text('Filters'),
+          centerTitle: true,
+        ),
+        // body: StreamBuilder<List<SelectableItem<Facet>>>(
+        //     stream: _facetList.facets,
+        //     builder: (context, snapshot) {
+        //       if (!snapshot.hasData) {
+        //         return const SizedBox.shrink();
+        //       }
+        //       final selectableFacets = snapshot.data!;
+        //       return ListView.builder(
+        //           padding: const EdgeInsets.all(8),
+        //           itemCount: selectableFacets.length,
+        //           itemBuilder: (_, index) {
+        //             final selectableFacet = selectableFacets[index];
+        //             return CheckboxListTile(
+        //               value: selectableFacet.isSelected,
+        //               title: Text(
+        //                   "${selectableFacet.item.value} (${selectableFacet.item.count})"),
+        //               onChanged: (_) {
+        //                 _facetList.toggle(selectableFacet.item.value);
+        //               },
+        //             );
+        //           });
+        //     }),
+      );
 
   Widget _infiniteHitsListView(BuildContext context) => RefreshIndicator(
         onRefresh: () => Future.sync(
