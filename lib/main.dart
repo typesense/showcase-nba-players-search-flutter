@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:showcase_typesense_flutter/models/nba_player.dart';
+import 'package:showcase_typesense_flutter/models/nba_player_search_facet.dart';
+import 'package:showcase_typesense_flutter/widgets/facet_list.dart';
 import 'package:showcase_typesense_flutter/widgets/nba_player_list_item.dart';
 import 'package:typesense/typesense.dart';
 import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
@@ -73,15 +75,16 @@ class _MyHomePageState extends State<MyHomePage> {
     numRetries: 3, // A total of 4 tries (1 original try + 3 retries)
     connectionTimeout: const Duration(seconds: 2),
   ));
+  Future<FacetState?>? _facetState;
 
   @override
   void initState() {
-    _pagingController.addPageRequestListener((pageKey) => _fetchPage(pageKey));
-
     super.initState();
-  }
 
-// Future _facetState = Future.value([]);
+    _pagingController.addPageRequestListener((pageKey) {
+      _fetchPage(pageKey);
+    });
+  }
 
   Future<void> _fetchPage(pageKey) async {
     try {
@@ -90,20 +93,13 @@ class _MyHomePageState extends State<MyHomePage> {
         'query_by': 'player_name',
         'page': '$pageKey',
         'per_page': '$_pageSize',
-        'facet_by': 'team_abbreviation,country,season'
+        'facet_by': 'team_abbreviation,country,season',
+        'max_facet_values': '99'
       };
       final res = await client
           .collection('nba_players')
           .documents
           .search(searchParameters);
-      // facets
-      // setState(() {
-      //         _facetState = (
-      //   facetCounts: res['facet_counts'],
-      //   filterBy: 'brand',
-      // );
-
-      // });
 
       final newItems = res['hits']
           .map<NBAPlayer>((item) => NBAPlayer.fromJson(item['document']))
@@ -115,9 +111,13 @@ class _MyHomePageState extends State<MyHomePage> {
         final nextPageKey = pageKey + 1;
         _pagingController.appendPage(newItems, nextPageKey);
       }
+      setState(() {
+        _facetState = Future.value(FacetState.fromSearchResponse(res, ''));
+      });
     } catch (error) {
       _pagingController.error = error;
       print(error);
+      return null;
     }
   }
 
@@ -247,28 +247,27 @@ class _MyHomePageState extends State<MyHomePage> {
           title: const Text('Filters'),
           centerTitle: true,
         ),
-        // body: StreamBuilder<List<SelectableItem<Facet>>>(
-        //     stream: _facetList.facets,
-        //     builder: (context, snapshot) {
-        //       if (!snapshot.hasData) {
-        //         return const SizedBox.shrink();
-        //       }
-        //       final selectableFacets = snapshot.data!;
-        //       return ListView.builder(
-        //           padding: const EdgeInsets.all(8),
-        //           itemCount: selectableFacets.length,
-        //           itemBuilder: (_, index) {
-        //             final selectableFacet = selectableFacets[index];
-        //             return CheckboxListTile(
-        //               value: selectableFacet.isSelected,
-        //               title: Text(
-        //                   "${selectableFacet.item.value} (${selectableFacet.item.count})"),
-        //               onChanged: (_) {
-        //                 _facetList.toggle(selectableFacet.item.value);
-        //               },
-        //             );
-        //           });
-        //     }),
+        body: FutureBuilder<FacetState?>(
+            future: _facetState,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: Text('Please wait its loading...'));
+              } else {
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
+                if (!snapshot.hasData) {
+                  return const Center(child: Text('No data'));
+                }
+
+                final state = snapshot.data!;
+
+                return FacetList(
+                    facetState: state, attribute: 'team_abbreviation');
+                //   },
+                // );
+              }
+            }),
       );
 
   Widget _infiniteHitsListView(BuildContext context) => RefreshIndicator(
