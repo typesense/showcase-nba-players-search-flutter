@@ -76,6 +76,8 @@ class _MyHomePageState extends State<MyHomePage> {
     connectionTimeout: const Duration(seconds: 2),
   ));
   Future<FacetState?>? _facetState;
+  final Map<String, Set<String>> filterState = {};
+  String filterBy = '';
 
   @override
   void initState() {
@@ -94,7 +96,8 @@ class _MyHomePageState extends State<MyHomePage> {
         'page': '$pageKey',
         'per_page': '$_pageSize',
         'facet_by': 'team_abbreviation,country,season',
-        'max_facet_values': '99'
+        'max_facet_values': '99',
+        'filter_by': filterBy,
       };
       final res = await client
           .collection('nba_players')
@@ -247,27 +250,53 @@ class _MyHomePageState extends State<MyHomePage> {
           title: const Text('Filters'),
           centerTitle: true,
         ),
-        body: FutureBuilder<FacetState?>(
-            future: _facetState,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: Text('Please wait its loading...'));
-              } else {
-                if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
-                }
-                if (!snapshot.hasData) {
-                  return const Center(child: Text('No data'));
-                }
+        body: Column(
+          children: [
+            Expanded(
+              child: FutureBuilder<FacetState?>(
+                  future: _facetState,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(
+                          child: Text('Please wait its loading...'));
+                    } else {
+                      if (snapshot.hasError) {
+                        return Center(child: Text('Error: ${snapshot.error}'));
+                      }
+                      if (!snapshot.hasData) {
+                        return const Center(child: Text('No data'));
+                      }
 
-                final state = snapshot.data!;
+                      final state = snapshot.data!;
+                      print(filterState);
 
-                return FacetList(
-                    facetState: state, attribute: 'team_abbreviation');
-                //   },
-                // );
-              }
-            }),
+                      return FacetList(
+                          facetState: state,
+                          attribute: 'team_abbreviation',
+                          filterState: filterState);
+                      //   },
+                      // );
+                    }
+                  }),
+            ),
+            OutlinedButton(
+              child: const Text('Filter'),
+              onPressed: () {
+                final filterItems = [];
+                filterState.forEach((key, value) {
+                  if (value.isNotEmpty) {
+                    filterItems.add('$key:=[${value.join(',')}]');
+                  }
+                });
+                print(filterItems);
+                setState(() {
+                  filterBy = filterItems.join(' && ');
+                  _pagingController.refresh();
+                });
+              },
+            )
+          ],
+        ),
       );
 
   Widget _infiniteHitsListView(BuildContext context) => RefreshIndicator(
