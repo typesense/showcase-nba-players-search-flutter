@@ -1,18 +1,15 @@
-class FacetState {
-  FacetState({
+class FacetCounts {
+  FacetCounts({
     required this.facetCounts,
-    required this.filterBy,
   });
 
   final List<FacetCount> facetCounts;
-  final String filterBy;
 
-  factory FacetState.fromSearchResponse(Map<String, dynamic> json, filterBy) =>
-      FacetState(
+  factory FacetCounts.fromSearchResponse(Map<String, dynamic> json) =>
+      FacetCounts(
         facetCounts: json['facet_counts']
             .map<FacetCount>((item) => FacetCount.fromJson(item))
             .toList(),
-        filterBy: filterBy,
       );
 }
 
@@ -37,13 +34,11 @@ class FacetCountItem {
   FacetCountItem({
     required this.count,
     required this.value,
-    required this.isSelected,
   });
 
   final int count;
   final String value;
-  bool isSelected;
 
-  factory FacetCountItem.fromJson(Map<String, dynamic> json) => FacetCountItem(
-      count: json['count'], value: json['value'], isSelected: false);
+  factory FacetCountItem.fromJson(Map<String, dynamic> json) =>
+      FacetCountItem(count: json['count'], value: json['value']);
 }

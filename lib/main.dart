@@ -75,9 +75,16 @@ class _MyHomePageState extends State<MyHomePage> {
     numRetries: 3, // A total of 4 tries (1 original try + 3 retries)
     connectionTimeout: const Duration(seconds: 2),
   ));
-  Future<FacetState?>? _facetState;
+  Future<FacetCounts?>? _facetCounts;
   final Map<String, Set<String>> filterState = {};
   String filterBy = '';
+
+  void search() => setState(() {
+        query = _searchInputController.text;
+        filterBy = '';
+        filterState.clear();
+        _pagingController.refresh();
+      });
 
   @override
   void initState() {
@@ -114,13 +121,13 @@ class _MyHomePageState extends State<MyHomePage> {
         final nextPageKey = pageKey + 1;
         _pagingController.appendPage(newItems, nextPageKey);
       }
+
       setState(() {
-        _facetState = Future.value(FacetState.fromSearchResponse(res, ''));
+        _facetCounts = Future.value(FacetCounts.fromSearchResponse(res));
       });
     } catch (error) {
       _pagingController.error = error;
       print(error);
-      return null;
     }
   }
 
@@ -148,12 +155,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       const EdgeInsets.only(left: 16, right: 16, bottom: 14),
                   child: TextField(
                     controller: _searchInputController,
-                    onSubmitted: (String value) {
-                      setState(() {
-                        query = _searchInputController.text;
-                        _pagingController.refresh();
-                      });
-                    },
+                    onSubmitted: (String value) => search(),
                     decoration: InputDecoration(
                       fillColor: Theme.of(context).colorScheme.surface,
                       filled: true,
@@ -249,54 +251,74 @@ class _MyHomePageState extends State<MyHomePage> {
         appBar: AppBar(
           title: const Text('Filters'),
           centerTitle: true,
+          scrolledUnderElevation: 0,
         ),
-        body: Column(
-          children: [
-            Expanded(
-              child: FutureBuilder<FacetState?>(
-                  future: _facetState,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(
-                          child: Text('Please wait its loading...'));
-                    } else {
-                      if (snapshot.hasError) {
-                        return Center(child: Text('Error: ${snapshot.error}'));
-                      }
-                      if (!snapshot.hasData) {
-                        return const Center(child: Text('No data'));
-                      }
+        body: FutureBuilder<FacetCounts?>(
+            future: _facetCounts,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: Text('Loading...'));
+              } else {
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
+                if (!snapshot.hasData) {
+                  return const Center(child: Text('No data'));
+                }
 
-                      final state = snapshot.data!;
-                      print(filterState);
+                final state = snapshot.data!;
 
-                      return FacetList(
-                          facetState: state,
-                          attribute: 'team_abbreviation',
-                          filterState: filterState);
-                      //   },
-                      // );
+                void onChanged(_) {
+                  final filterItems = [];
+                  filterState.forEach((key, value) {
+                    if (value.isNotEmpty) {
+                      filterItems.add('$key:=[${value.join(',')}]');
                     }
-                  }),
-            ),
-            OutlinedButton(
-              child: const Text('Filter'),
-              onPressed: () {
-                final filterItems = [];
-                filterState.forEach((key, value) {
-                  if (value.isNotEmpty) {
-                    filterItems.add('$key:=[${value.join(',')}]');
-                  }
-                });
-                print(filterItems);
-                setState(() {
-                  filterBy = filterItems.join(' && ');
-                  _pagingController.refresh();
-                });
-              },
-            )
-          ],
-        ),
+                  });
+                  setState(() {
+                    filterBy = filterItems.join(' && ');
+                    _pagingController.refresh();
+                  });
+                }
+
+                return Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: CustomScrollView(
+                    slivers: [
+                      const SliverToBoxAdapter(
+                        child: Text('Team'),
+                      ),
+                      FacetList(
+                        facetCounts: state,
+                        attribute: 'team_abbreviation',
+                        filterState: filterState,
+                        onChanged: onChanged,
+                      ),
+                      const SliverToBoxAdapter(
+                        child: Text('Season'),
+                      ),
+                      FacetList(
+                        facetCounts: state,
+                        attribute: 'season',
+                        filterState: filterState,
+                        onChanged: onChanged,
+                      ),
+                      const SliverToBoxAdapter(
+                        child: Text('Player\'s nationality'),
+                      ),
+                      FacetList(
+                        facetCounts: state,
+                        attribute: 'country',
+                        filterState: filterState,
+                        onChanged: onChanged,
+                      ),
+                    ],
+                  ),
+                );
+                //   },
+                // );
+              }
+            }),
       );
 
   Widget _infiniteHitsListView(BuildContext context) => RefreshIndicator(
