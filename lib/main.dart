@@ -249,7 +249,12 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Widget _filters(BuildContext context) => Scaffold(
         appBar: AppBar(
-          title: const Text('Filters'),
+          title: const Text(
+            'Filters',
+            style: TextStyle(
+              fontSize: 20,
+            ),
+          ),
           centerTitle: true,
           scrolledUnderElevation: 0,
         ),
@@ -281,31 +286,36 @@ class _MyHomePageState extends State<MyHomePage> {
                   });
                 }
 
+                filterTitle(String tilte) => SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Text(
+                          tilte,
+                          style: const TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    );
+
                 return Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: CustomScrollView(
                     slivers: [
-                      const SliverToBoxAdapter(
-                        child: Text('Team'),
-                      ),
+                      filterTitle('Team'),
                       FacetList(
                         facetCounts: state,
                         attribute: 'team_abbreviation',
                         filterState: filterState,
                         onChanged: onChanged,
                       ),
-                      const SliverToBoxAdapter(
-                        child: Text('Season'),
-                      ),
+                      filterTitle('Season'),
                       FacetList(
                         facetCounts: state,
                         attribute: 'season',
                         filterState: filterState,
                         onChanged: onChanged,
                       ),
-                      const SliverToBoxAdapter(
-                        child: Text('Player\'s nationality'),
-                      ),
+                      filterTitle('Player\'s nationality'),
                       FacetList(
                         facetCounts: state,
                         attribute: 'country',

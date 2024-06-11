@@ -33,7 +33,20 @@ class _FacetCountstate extends State<FacetList> {
 
       return CheckboxListTile(
         value: thisFilterState.contains(value),
-        title: Text("${facet.value} ${facet.count}"),
+        title: Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(
+                text: '${facet.value} ',
+                style: const TextStyle(fontSize: 14),
+              ),
+              TextSpan(
+                text: '${facet.count}',
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
         onChanged: (_) {
           setState(() {
             final prevValues = widget.filterState[widget.attribute] ?? {};
