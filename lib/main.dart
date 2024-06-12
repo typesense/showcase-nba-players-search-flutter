@@ -34,7 +34,7 @@ class MyApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Search NBA players\' stats'),
+      home: const MyHomePage(title: 'Search  players\' stats'),
       debugShowCheckedModeBanner: false,
     );
   }
@@ -67,7 +67,7 @@ class _MyHomePageState extends State<MyHomePage> {
       Node.withUri(
         Uri(
           scheme: 'http',
-          host: '192.168.1.9', // replace with your wifi IPV4 address
+          host: '192.168.1.8', // replace with your wifi IPV4 address
           port: 8108,
         ),
       ),
@@ -122,8 +122,26 @@ class _MyHomePageState extends State<MyHomePage> {
         _pagingController.appendPage(newItems, nextPageKey);
       }
 
+      final facetCounts = FacetCounts();
+      final items = res['facet_counts'];
+      final prevFacetNames = [];
+      for (var i = 0; i < items.length; i++) {
+        final state = filterState[items[i]['field_name']];
+        if (state == null || state.isEmpty) {
+          facetCounts.facetCounts.add(FacetCount.fromJson(items[i]));
+        } else {
+          prevFacetNames.add(items[i]['field_name']);
+        }
+      }
+      final prevFacetCounts = (await _facetCounts)
+          ?.facetCounts
+          .where((item) => prevFacetNames.contains(item.fieldName));
+      facetCounts.facetCounts = [
+        ...?prevFacetCounts,
+        ...facetCounts.facetCounts
+      ];
       setState(() {
-        _facetCounts = Future.value(FacetCounts.fromSearchResponse(res));
+        _facetCounts = Future.value(facetCounts);
       });
     } catch (error) {
       _pagingController.error = error;
@@ -142,55 +160,52 @@ class _MyHomePageState extends State<MyHomePage> {
         preferredSize: const Size.fromHeight(100),
         child: appBar(context),
       ),
-      body: Flexible(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 768),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Container(
-                  margin:
-                      const EdgeInsets.only(left: 16, right: 16, bottom: 14),
-                  child: TextField(
-                    controller: _searchInputController,
-                    onSubmitted: (String value) => search(),
-                    decoration: InputDecoration(
-                      fillColor: Theme.of(context).colorScheme.surface,
-                      filled: true,
-                      prefixIcon: Padding(
-                        padding: const EdgeInsets.only(
-                            top: 12, bottom: 12, left: 14, right: 14),
-                        child: SvgPicture.asset('assets/icons/Search.svg'),
-                      ),
-                      suffixIcon: Padding(
-                        padding: const EdgeInsets.all(4),
-                        child: IconButton(
-                          icon: SvgPicture.asset('assets/icons/Filter.svg'),
-                          onPressed: () => _key.currentState!.openEndDrawer(),
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(width: 1.5),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(width: 1.5),
-                      ),
-                      hintText: 'Type in an NBA player name...',
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 768),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                margin: const EdgeInsets.only(left: 16, right: 16, bottom: 14),
+                child: TextField(
+                  controller: _searchInputController,
+                  onSubmitted: (String value) => search(),
+                  decoration: InputDecoration(
+                    fillColor: Theme.of(context).colorScheme.surface,
+                    filled: true,
+                    prefixIcon: Padding(
+                      padding: const EdgeInsets.only(
+                          top: 12, bottom: 12, left: 14, right: 14),
+                      child: SvgPicture.asset('assets/icons/Search.svg'),
                     ),
-                    style: const TextStyle(
-                      fontSize: 14,
+                    suffixIcon: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: IconButton(
+                        icon: SvgPicture.asset('assets/icons/Filter.svg'),
+                        onPressed: () => _key.currentState!.openEndDrawer(),
+                      ),
                     ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: const BorderSide(width: 1.5),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: const BorderSide(width: 1.5),
+                    ),
+                    hintText: 'Type in an NBA player name...',
+                  ),
+                  style: const TextStyle(
+                    fontSize: 14,
                   ),
                 ),
-                Expanded(
-                  child: _infiniteHitsListView(context),
-                )
-              ],
-            ),
+              ),
+              Expanded(
+                child: _infiniteHitsListView(context),
+              )
+            ],
           ),
         ),
       ),
@@ -261,6 +276,7 @@ class _MyHomePageState extends State<MyHomePage> {
         body: FutureBuilder<FacetCounts?>(
             future: _facetCounts,
             builder: (context, snapshot) {
+              print(snapshot);
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: Text('Loading...'));
               } else {

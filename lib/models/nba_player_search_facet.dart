@@ -1,16 +1,5 @@
 class FacetCounts {
-  FacetCounts({
-    required this.facetCounts,
-  });
-
-  final List<FacetCount> facetCounts;
-
-  factory FacetCounts.fromSearchResponse(Map<String, dynamic> json) =>
-      FacetCounts(
-        facetCounts: json['facet_counts']
-            .map<FacetCount>((item) => FacetCount.fromJson(item))
-            .toList(),
-      );
+  List<FacetCount> facetCounts = [];
 }
 
 class FacetCount {
