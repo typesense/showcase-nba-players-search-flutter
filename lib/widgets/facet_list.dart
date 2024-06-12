@@ -10,7 +10,7 @@ class FacetList extends StatefulWidget {
     super.key,
   });
 
-  final FacetCounts facetCounts;
+  final List<FacetCount> facetCounts;
   final String attribute;
   final void Function(bool?) onChanged;
   final Map<String, Set<String>> filterState;
@@ -21,7 +21,7 @@ class FacetList extends StatefulWidget {
 class _FacetCountstate extends State<FacetList> {
   @override
   Widget build(BuildContext context) {
-    final FacetCount facetList = widget.facetCounts.facetCounts
+    final FacetCount facetList = widget.facetCounts
         .firstWhere((facetList) => facetList.fieldName == widget.attribute);
 
     final thisFilterState = widget.filterState[widget.attribute] ?? {};

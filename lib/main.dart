@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:showcase_typesense_flutter/models/nba_player.dart';
 import 'package:showcase_typesense_flutter/models/nba_player_search_facet.dart';
+import 'package:showcase_typesense_flutter/utils/populate_filter_by.dart';
 import 'package:showcase_typesense_flutter/widgets/facet_list.dart';
 import 'package:showcase_typesense_flutter/widgets/nba_player_list_item.dart';
 import 'package:typesense/typesense.dart';
@@ -34,7 +35,7 @@ class MyApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Search  players\' stats'),
+      home: const MyHomePage(title: 'Search NBA players\' stats'),
       debugShowCheckedModeBanner: false,
     );
   }
@@ -75,14 +76,13 @@ class _MyHomePageState extends State<MyHomePage> {
     numRetries: 3, // A total of 4 tries (1 original try + 3 retries)
     connectionTimeout: const Duration(seconds: 2),
   ));
-  Future<FacetCounts?>? _facetCounts;
-  final Map<String, Set<String>> filterState = {};
-  String filterBy = '';
+
+  final _facetState = FacetState();
 
   void search() => setState(() {
         query = _searchInputController.text;
-        filterBy = '';
-        filterState.clear();
+        _facetState.filterBy = '';
+        _facetState.filterState.clear();
         _pagingController.refresh();
       });
 
@@ -95,23 +95,64 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
+  (Map<String, dynamic>, Map<String, int?>) populateSearchRequests() {
+    final searchRequests = {
+      _facetState.filterBy,
+    };
+
+    final Map<String, int?> keyIndexPairs = {};
+
+    final emptyKeys = [];
+    _facetState.filterState.forEach((key, value) {
+      if (value.isEmpty) {
+        emptyKeys.add(key);
+        keyIndexPairs[key] = null;
+      }
+    });
+
+    _facetState.filterState.removeWhere((k, v) => emptyKeys.contains(k));
+    final keys = _facetState.filterState.keys;
+
+    for (var i = 0; i < keys.length; i++) {
+      final copy = {..._facetState.filterState};
+      copy.remove(keys.elementAt(i));
+      if (copy.isNotEmpty) {
+        final req = populateFilterBy(copy);
+        searchRequests.add(req);
+        keyIndexPairs[keys.elementAt(i)] = i + 1;
+      }
+    }
+
+    return (
+      {
+        'searches': searchRequests
+            .map((item) => {
+                  'filter_by': item,
+                })
+            .toList(),
+      },
+      keyIndexPairs
+    );
+  }
+
   Future<void> _fetchPage(pageKey) async {
     try {
-      final searchParameters = {
+      final (searchRequests, keyIndexPairs) = populateSearchRequests();
+
+      print(keyIndexPairs);
+      final commonSearchParams = {
+        'collection': 'nba_players',
         'q': query,
         'query_by': 'player_name',
         'page': '$pageKey',
         'per_page': '$_pageSize',
         'facet_by': 'team_abbreviation,country,season',
         'max_facet_values': '99',
-        'filter_by': filterBy,
       };
-      final res = await client
-          .collection('nba_players')
-          .documents
-          .search(searchParameters);
 
-      final newItems = res['hits']
+      final res = await client.multiSearch
+          .perform(searchRequests, queryParams: commonSearchParams);
+      final newItems = res['results'][0]['hits']
           .map<NBAPlayer>((item) => NBAPlayer.fromJson(item['document']))
           .toList();
       final isLastPage = newItems.length < _pageSize;
@@ -122,27 +163,35 @@ class _MyHomePageState extends State<MyHomePage> {
         _pagingController.appendPage(newItems, nextPageKey);
       }
 
-      final facetCounts = FacetCounts();
-      final items = res['facet_counts'];
-      final prevFacetNames = [];
-      for (var i = 0; i < items.length; i++) {
-        final state = filterState[items[i]['field_name']];
-        if (state == null || state.isEmpty) {
-          facetCounts.facetCounts.add(FacetCount.fromJson(items[i]));
-        } else {
-          prevFacetNames.add(items[i]['field_name']);
-        }
+      if (_facetState.facetCounts.isEmpty) {
+        setState(() {
+          _facetState.facetCounts =
+              res['results'][0]['facet_counts'].map<FacetCount>((item) {
+            final facetCount = FacetCount.fromJson(item);
+            _facetState.filterState[facetCount.fieldName] = {};
+            return facetCount;
+          }).toList();
+        });
+      } else {
+        setState(() {
+          keyIndexPairs.forEach((key, value) {
+            final index = _facetState.facetCounts
+                .indexWhere((item) => item.fieldName == key);
+
+            if (value == null) {
+              _facetState.facetCounts[index] = res['results'][0]['facet_counts']
+                  .map<FacetCount>((item) => FacetCount.fromJson(item))
+                  .firstWhere((item) => item.fieldName == key);
+              _facetState.filterState[key] = {};
+            } else {
+              _facetState.facetCounts[index] = res['results'][value]
+                      ['facet_counts']
+                  .map<FacetCount>((item) => FacetCount.fromJson(item))
+                  .firstWhere((item) => item.fieldName == key);
+            }
+          });
+        });
       }
-      final prevFacetCounts = (await _facetCounts)
-          ?.facetCounts
-          .where((item) => prevFacetNames.contains(item.fieldName));
-      facetCounts.facetCounts = [
-        ...?prevFacetCounts,
-        ...facetCounts.facetCounts
-      ];
-      setState(() {
-        _facetCounts = Future.value(facetCounts);
-      });
     } catch (error) {
       _pagingController.error = error;
       print(error);
@@ -273,78 +322,62 @@ class _MyHomePageState extends State<MyHomePage> {
           centerTitle: true,
           scrolledUnderElevation: 0,
         ),
-        body: FutureBuilder<FacetCounts?>(
-            future: _facetCounts,
-            builder: (context, snapshot) {
-              print(snapshot);
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: Text('Loading...'));
-              } else {
-                if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
-                }
-                if (!snapshot.hasData) {
-                  return const Center(child: Text('No data'));
-                }
+        body: Builder(builder: (context) {
+          if (_facetState.facetCounts.isEmpty) {
+            return const Center(child: Text('No data'));
+          }
 
-                final state = snapshot.data!;
+          final facetCounts = _facetState.facetCounts;
 
-                void onChanged(_) {
-                  final filterItems = [];
-                  filterState.forEach((key, value) {
-                    if (value.isNotEmpty) {
-                      filterItems.add('$key:=[${value.join(',')}]');
-                    }
-                  });
-                  setState(() {
-                    filterBy = filterItems.join(' && ');
-                    _pagingController.refresh();
-                  });
-                }
+          void onChanged(_) {
+            setState(() {
+              _facetState.filterBy = populateFilterBy(_facetState.filterState);
+              _pagingController.refresh();
+            });
+          }
 
-                filterTitle(String tilte) => SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Text(
-                          tilte,
-                          style: const TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    );
-
-                return Padding(
+          filterTitle(String tilte) => SliverToBoxAdapter(
+                child: Padding(
                   padding: const EdgeInsets.all(8.0),
-                  child: CustomScrollView(
-                    slivers: [
-                      filterTitle('Team'),
-                      FacetList(
-                        facetCounts: state,
-                        attribute: 'team_abbreviation',
-                        filterState: filterState,
-                        onChanged: onChanged,
-                      ),
-                      filterTitle('Season'),
-                      FacetList(
-                        facetCounts: state,
-                        attribute: 'season',
-                        filterState: filterState,
-                        onChanged: onChanged,
-                      ),
-                      filterTitle('Player\'s nationality'),
-                      FacetList(
-                        facetCounts: state,
-                        attribute: 'country',
-                        filterState: filterState,
-                        onChanged: onChanged,
-                      ),
-                    ],
+                  child: Text(
+                    tilte,
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold),
                   ),
-                );
-                //   },
-                // );
-              }
-            }),
+                ),
+              );
+
+          return Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: CustomScrollView(
+              slivers: [
+                filterTitle('Team'),
+                FacetList(
+                  facetCounts: facetCounts,
+                  attribute: 'team_abbreviation',
+                  filterState: _facetState.filterState,
+                  onChanged: onChanged,
+                ),
+                filterTitle('Season'),
+                FacetList(
+                  facetCounts: facetCounts,
+                  attribute: 'season',
+                  filterState: _facetState.filterState,
+                  onChanged: onChanged,
+                ),
+                filterTitle('Player\'s nationality'),
+                FacetList(
+                  facetCounts: facetCounts,
+                  attribute: 'country',
+                  filterState: _facetState.filterState,
+                  onChanged: onChanged,
+                ),
+              ],
+            ),
+          );
+          //   },
+          // );
+        }),
       );
 
   Widget _infiniteHitsListView(BuildContext context) => RefreshIndicator(

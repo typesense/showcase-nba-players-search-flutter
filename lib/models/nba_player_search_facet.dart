@@ -1,5 +1,7 @@
-class FacetCounts {
+class FacetState {
   List<FacetCount> facetCounts = [];
+  Map<String, Set<String>> filterState = {};
+  String filterBy = '';
 }
 
 class FacetCount {
