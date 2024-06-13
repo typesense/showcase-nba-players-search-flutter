@@ -102,26 +102,17 @@ class _MyHomePageState extends State<MyHomePage> {
 
     final Map<String, int?> keyIndexPairs = {};
 
-    final emptyKeys = [];
-    _facetState.filterState.forEach((key, value) {
-      if (value.isEmpty) {
-        emptyKeys.add(key);
+    _facetState.filterState.forEach((key, val) {
+      if (val.isEmpty) {
         keyIndexPairs[key] = null;
-      }
-    });
-
-    _facetState.filterState.removeWhere((k, v) => emptyKeys.contains(k));
-    final keys = _facetState.filterState.keys;
-
-    for (var i = 0; i < keys.length; i++) {
-      final copy = {..._facetState.filterState};
-      copy.remove(keys.elementAt(i));
-      if (copy.isNotEmpty) {
+      } else {
+        final copy = {..._facetState.filterState};
+        copy.remove(key);
         final req = populateFilterBy(copy);
         searchRequests.add(req);
-        keyIndexPairs[keys.elementAt(i)] = i + 1;
+        keyIndexPairs[key] = searchRequests.length - 1;
       }
-    }
+    });
 
     return (
       {
@@ -152,7 +143,10 @@ class _MyHomePageState extends State<MyHomePage> {
 
       final res = await client.multiSearch
           .perform(searchRequests, queryParams: commonSearchParams);
-      final newItems = res['results'][0]['hits']
+
+      final mainResult = res['results'][0];
+
+      final newItems = mainResult['hits']
           .map<NBAPlayer>((item) => NBAPlayer.fromJson(item['document']))
           .toList();
       final isLastPage = newItems.length < _pageSize;
@@ -163,10 +157,10 @@ class _MyHomePageState extends State<MyHomePage> {
         _pagingController.appendPage(newItems, nextPageKey);
       }
 
-      if (_facetState.facetCounts.isEmpty) {
+      if (_facetState.filterState.isEmpty) {
         setState(() {
           _facetState.facetCounts =
-              res['results'][0]['facet_counts'].map<FacetCount>((item) {
+              mainResult['facet_counts'].map<FacetCount>((item) {
             final facetCount = FacetCount.fromJson(item);
             _facetState.filterState[facetCount.fieldName] = {};
             return facetCount;
@@ -179,7 +173,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 .indexWhere((item) => item.fieldName == key);
 
             if (value == null) {
-              _facetState.facetCounts[index] = res['results'][0]['facet_counts']
+              _facetState.facetCounts[index] = mainResult['facet_counts']
                   .map<FacetCount>((item) => FacetCount.fromJson(item))
                   .firstWhere((item) => item.fieldName == key);
               _facetState.filterState[key] = {};
