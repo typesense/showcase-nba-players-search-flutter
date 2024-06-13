@@ -377,6 +377,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   attribute: 'country',
                   filterState: _facetState.filterState,
                   handleOnChange: handleOnChange,
+                  showMoreLimit: 6,
                 ),
               ],
             ),
