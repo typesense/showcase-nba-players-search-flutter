@@ -6,13 +6,13 @@ class FacetList extends StatefulWidget {
     required this.facetCounts,
     required this.filterState,
     required this.attribute,
-    required this.onChanged,
+    required this.handleOnChange,
     super.key,
   });
 
   final List<FacetCount> facetCounts;
   final String attribute;
-  final void Function(bool?) onChanged;
+  final void Function(int idx) handleOnChange;
   final Map<String, Set<String>> filterState;
   @override
   State<FacetList> createState() => _FacetCountstate();
@@ -24,7 +24,7 @@ class _FacetCountstate extends State<FacetList> {
     final FacetCount facetList = widget.facetCounts
         .firstWhere((facetList) => facetList.fieldName == widget.attribute);
 
-    final thisFilterState = widget.filterState[widget.attribute] ?? {};
+    final thisFilterState = widget.filterState[widget.attribute]!;
 
     return SliverList(
         delegate: SliverChildBuilderDelegate((_, idx) {
@@ -48,16 +48,12 @@ class _FacetCountstate extends State<FacetList> {
           ),
         ),
         onChanged: (_) {
-          setState(() {
-            final prevValues = widget.filterState[widget.attribute] ?? {};
-            if (prevValues.contains(value)) {
-              prevValues.remove(value);
-            } else {
-              prevValues.add(value);
-            }
-            widget.filterState[widget.attribute] = prevValues;
-          });
-          widget.onChanged(_);
+          if (thisFilterState.contains(value)) {
+            thisFilterState.remove(value);
+          } else {
+            thisFilterState.add(value);
+          }
+          widget.handleOnChange(idx);
         },
       );
     }, childCount: facetList.counts.length));

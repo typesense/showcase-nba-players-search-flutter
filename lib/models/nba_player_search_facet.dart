@@ -10,7 +10,7 @@ class FacetCount {
     required this.fieldName,
   });
 
-  final List<FacetCountItem> counts;
+  List<FacetCountItem> counts;
   final String fieldName;
 
   factory FacetCount.fromJson(Map<String, dynamic> json) => FacetCount(
@@ -27,7 +27,7 @@ class FacetCountItem {
     required this.value,
   });
 
-  final int count;
+  int count;
   final String value;
 
   factory FacetCountItem.fromJson(Map<String, dynamic> json) =>

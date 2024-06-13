@@ -97,7 +97,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   (Map<String, dynamic>, Map<String, int?>) populateSearchRequests() {
     final searchRequests = {
-      _facetState.filterBy,
+      (_facetState.filterBy, 'team_abbreviation,country,season'),
     };
 
     final Map<String, int?> keyIndexPairs = {};
@@ -108,19 +108,21 @@ class _MyHomePageState extends State<MyHomePage> {
       } else {
         final copy = {..._facetState.filterState};
         copy.remove(key);
-        final req = populateFilterBy(copy);
-        searchRequests.add(req);
+        final filterBy = populateFilterBy(copy);
+        searchRequests.add((filterBy, key));
         keyIndexPairs[key] = searchRequests.length - 1;
       }
     });
 
     return (
       {
-        'searches': searchRequests
-            .map((item) => {
-                  'filter_by': item,
-                })
-            .toList(),
+        'searches': searchRequests.map((item) {
+          final (filterBy, key) = item;
+          return {
+            'filter_by': filterBy,
+            'facet_by': key,
+          };
+        }).toList(),
       },
       keyIndexPairs
     );
@@ -137,7 +139,6 @@ class _MyHomePageState extends State<MyHomePage> {
         'query_by': 'player_name',
         'page': '$pageKey',
         'per_page': '$_pageSize',
-        'facet_by': 'team_abbreviation,country,season',
         'max_facet_values': '99',
       };
 
@@ -171,17 +172,28 @@ class _MyHomePageState extends State<MyHomePage> {
           keyIndexPairs.forEach((key, value) {
             final index = _facetState.facetCounts
                 .indexWhere((item) => item.fieldName == key);
-
+            print(keyIndexPairs);
             if (value == null) {
               _facetState.facetCounts[index] = mainResult['facet_counts']
                   .map<FacetCount>((item) => FacetCount.fromJson(item))
                   .firstWhere((item) => item.fieldName == key);
-              _facetState.filterState[key] = {};
             } else {
-              _facetState.facetCounts[index] = res['results'][value]
-                      ['facet_counts']
-                  .map<FacetCount>((item) => FacetCount.fromJson(item))
-                  .firstWhere((item) => item.fieldName == key);
+              var newFacet =
+                  FacetCount.fromJson(res['results'][value]['facet_counts'][0]);
+              final newFacetValues = newFacet.counts.map((item) => item.value);
+              final prevSelectedFacetItems = [];
+              final prevFacet = _facetState.facetCounts[index].counts;
+
+              for (var i = 0; i < prevFacet.length; i++) {
+                if (_facetState.filterState[key]!
+                        .contains(prevFacet[i].value) &&
+                    !newFacetValues.contains(prevFacet[i].value)) {
+                  prevFacet[i].count = 0;
+                  prevSelectedFacetItems.add(prevFacet[i]);
+                }
+              }
+              newFacet.counts = [...prevSelectedFacetItems, ...newFacet.counts];
+              _facetState.facetCounts[index] = newFacet;
             }
           });
         });
@@ -323,7 +335,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
           final facetCounts = _facetState.facetCounts;
 
-          void onChanged(_) {
+          void handleOnChange(idx) {
             setState(() {
               _facetState.filterBy = populateFilterBy(_facetState.filterState);
               _pagingController.refresh();
@@ -350,21 +362,21 @@ class _MyHomePageState extends State<MyHomePage> {
                   facetCounts: facetCounts,
                   attribute: 'team_abbreviation',
                   filterState: _facetState.filterState,
-                  onChanged: onChanged,
+                  handleOnChange: handleOnChange,
                 ),
                 filterTitle('Season'),
                 FacetList(
                   facetCounts: facetCounts,
                   attribute: 'season',
                   filterState: _facetState.filterState,
-                  onChanged: onChanged,
+                  handleOnChange: handleOnChange,
                 ),
                 filterTitle('Player\'s nationality'),
                 FacetList(
                   facetCounts: facetCounts,
                   attribute: 'country',
                   filterState: _facetState.filterState,
-                  onChanged: onChanged,
+                  handleOnChange: handleOnChange,
                 ),
               ],
             ),
