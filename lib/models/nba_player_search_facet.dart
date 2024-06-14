@@ -1,7 +1,8 @@
 class FacetState {
   List<FacetCount> facetCounts = [];
-  Map<String, Set<String>> filterState = {};
-  String filterBy = '';
+  Map<String, Set<String>> filterState =
+      {}; // eg {'team_abbreviation': {'CLE','LAL'}}
+  String filterBy = ''; //eg: team_abbreviation:=[LAC] && season:=[2017-18]
 }
 
 class FacetCount {

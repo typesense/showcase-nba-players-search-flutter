@@ -79,22 +79,29 @@ class _MyHomePageState extends State<MyHomePage> {
         _pagingController.refresh();
       });
 
-  (Map<String, dynamic>, Map<String, int?>) populateSearchRequests() {
+  (Map<String, dynamic>, Map<String, int?>) populateSearchFacetRequests() {
+    // this is where we get our search result hits. Default to index 0.
     final searchRequests = {
       (_facetState.filterBy, 'team_abbreviation,country,season'),
     };
-
-    final Map<String, int?> keyIndexPairs = {};
+    // mapping each facet with the corresponding index in typesense multi search response
+    final Map<String, int?> facetNameSearchIndexPairs = {};
 
     _facetState.filterState.forEach((key, val) {
       if (val.isEmpty) {
-        keyIndexPairs[key] = null;
+        facetNameSearchIndexPairs[key] = null;
       } else {
+        /*
+        * if multiple facets is selected, we will update each facet list to their according combinations
+        * eg: if team_abbreviation:=[LAC] && season:=[2017-18] => get available country
+        * eg: if country:=[USA] && season:=[2017-18] => get available team_abbreviation
+        * eg: if country:=[USA] && team_abbreviation:=[LAC] => get available season
+        */
         final copy = {..._facetState.filterState};
         copy.remove(key);
         final filterBy = populateFilterBy(copy);
         searchRequests.add((filterBy, key));
-        keyIndexPairs[key] = searchRequests.length - 1;
+        facetNameSearchIndexPairs[key] = searchRequests.length - 1;
       }
     });
 
@@ -108,13 +115,14 @@ class _MyHomePageState extends State<MyHomePage> {
           };
         }).toList(),
       },
-      keyIndexPairs
+      facetNameSearchIndexPairs
     );
   }
 
   Future<void> _fetchPage(pageKey) async {
     try {
-      final (searchRequests, keyIndexPairs) = populateSearchRequests();
+      final (searchRequests, facetNameSearchIndexPairs) =
+          populateSearchFacetRequests();
 
       final commonSearchParams = {
         'collection': 'nba_players',
@@ -142,7 +150,9 @@ class _MyHomePageState extends State<MyHomePage> {
       }
 
       setState(() {
-        if (_facetState.filterState.isEmpty) {
+        final isInitialRequest = _facetState.filterState.isEmpty;
+
+        if (isInitialRequest) {
           _facetState.facetCounts =
               mainResult['facet_counts'].map<FacetCount>((item) {
             final facetCount = FacetCount.fromJson(item);
@@ -150,10 +160,12 @@ class _MyHomePageState extends State<MyHomePage> {
             return facetCount;
           }).toList();
         } else {
-          keyIndexPairs.forEach((key, value) {
+          facetNameSearchIndexPairs.forEach((key, value) {
             final index = _facetState.facetCounts
                 .indexWhere((item) => item.fieldName == key);
+
             if (value == null) {
+              // facets that aren't selected will be update with main result facetCounts
               _facetState.facetCounts[index] = mainResult['facet_counts']
                   .map<FacetCount>((item) => FacetCount.fromJson(item))
                   .firstWhere((item) => item.fieldName == key);
@@ -170,6 +182,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     _facetState.filterState[key]!.contains(prevFacetValue);
                 final existInNewFacets =
                     newFacetValues.contains(prevFacetValue);
+
                 if (!isSelectedFacet) {
                   continue;
                 }
@@ -204,6 +217,56 @@ class _MyHomePageState extends State<MyHomePage> {
         child: appBar(context),
       ),
       body: appBody(context),
+    );
+  }
+
+  AppBar appBar(BuildContext context) {
+    return AppBar(
+      title: Column(
+        children: [
+          Text(
+            widget.title,
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(height: 6),
+          Text.rich(
+            TextSpan(
+              style: const TextStyle(
+                fontSize: 12,
+              ),
+              children: [
+                const TextSpan(text: 'powered by '),
+                TextSpan(
+                  text: 'Typesense',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.secondary,
+                  ),
+                  recognizer: TapGestureRecognizer()
+                    ..onTap = () {
+                      openLink('https://typesense.org/');
+                    },
+                ),
+                const TextSpan(text: ' & '),
+                TextSpan(
+                  text: 'Flutter',
+                  style: const TextStyle(
+                    color: Color(0xff0468d7),
+                  ),
+                  recognizer: TapGestureRecognizer()
+                    ..onTap = () {
+                      openLink('https://flutter.dev/');
+                    },
+                ),
+              ],
+            ),
+          )
+        ],
+      ),
+      toolbarHeight: 100,
+      scrolledUnderElevation: 0,
+      centerTitle: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      actions: <Widget>[Container()], // this will hide endDrawer hamburger icon
     );
   }
 
@@ -256,56 +319,6 @@ class _MyHomePageState extends State<MyHomePage> {
           ],
         ),
       ),
-    );
-  }
-
-  AppBar appBar(BuildContext context) {
-    return AppBar(
-      title: Column(
-        children: [
-          Text(
-            widget.title,
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w500),
-          ),
-          const SizedBox(height: 6),
-          Text.rich(
-            TextSpan(
-              style: const TextStyle(
-                fontSize: 12,
-              ),
-              children: [
-                const TextSpan(text: 'powered by '),
-                TextSpan(
-                  text: 'Typesense',
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.secondary,
-                  ),
-                  recognizer: TapGestureRecognizer()
-                    ..onTap = () {
-                      openLink('https://typesense.org/');
-                    },
-                ),
-                const TextSpan(text: ' & '),
-                TextSpan(
-                  text: 'Flutter',
-                  style: const TextStyle(
-                    color: Color(0xff0468d7),
-                  ),
-                  recognizer: TapGestureRecognizer()
-                    ..onTap = () {
-                      openLink('https://flutter.dev/');
-                    },
-                ),
-              ],
-            ),
-          )
-        ],
-      ),
-      toolbarHeight: 100,
-      scrolledUnderElevation: 0,
-      centerTitle: true,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      actions: <Widget>[Container()], // this will hide endDrawer hamburger icon
     );
   }
 
@@ -384,7 +397,6 @@ class _MyHomePageState extends State<MyHomePage> {
           () => _pagingController.refresh(),
         ),
         child: PagedListView.separated(
-          // 4
           pagingController: _pagingController,
           padding: const EdgeInsets.all(16),
           separatorBuilder: (context, index) => const SizedBox(
