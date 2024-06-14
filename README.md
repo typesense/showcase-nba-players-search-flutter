@@ -2,7 +2,7 @@
  🏀 Search NBA players' stats, powered by Typesense & flutter
 </h1>
 
-This demo uses the <a href="https://github.com/typesense/typesense-dart" target="_blank">typesense-dart</a> client and <a href="https://pub.dev/packages/infinite_scroll_pagination" target="_blank">infinite_scroll_pagination</a> for flutter.
+This demo uses the <a href="https://github.com/typesense/typesense-dart" target="_blank">typesense-dart</a> client and flutter <a href="https://pub.dev/packages/infinite_scroll_pagination" target="_blank">infinite_scroll_pagination</a>.
 The dataset is available on <a href="https://www.kaggle.com/datasets/justinas/nba-players-data" target="_blank">Kaggle</a>.
 
 ## Project Structure
@@ -28,14 +28,18 @@ The dataset is available on <a href="https://www.kaggle.com/datasets/justinas/nb
 To run this project locally, make sure you have flutter SDK installed:
 
 ```shell
+cd cli
 #Start typesense server
-npm run start:typesense # or: docker compose up
+docker compose up
 
 #Index data into typesense
-npm run index:typesense
+dart index_typesense.dart
 ```
 
-Open http://localhost:5173 to see the app ✌️
+Start developing
+```shell
+ flutter run --dart-define-from-file=.env
+```
 
 ## Environment
 
