@@ -172,7 +172,6 @@ class _MyHomePageState extends State<MyHomePage> {
           keyIndexPairs.forEach((key, value) {
             final index = _facetState.facetCounts
                 .indexWhere((item) => item.fieldName == key);
-            print(keyIndexPairs);
             if (value == null) {
               _facetState.facetCounts[index] = mainResult['facet_counts']
                   .map<FacetCount>((item) => FacetCount.fromJson(item))
@@ -185,12 +184,21 @@ class _MyHomePageState extends State<MyHomePage> {
               final prevFacet = _facetState.facetCounts[index].counts;
 
               for (var i = 0; i < prevFacet.length; i++) {
-                if (_facetState.filterState[key]!
-                        .contains(prevFacet[i].value) &&
-                    !newFacetValues.contains(prevFacet[i].value)) {
-                  prevFacet[i].count = 0;
-                  prevSelectedFacetItems.add(prevFacet[i]);
+                final prevFacetValue = prevFacet[i].value;
+                final isSelectedFacet =
+                    _facetState.filterState[key]!.contains(prevFacetValue);
+                final existInNewFacets =
+                    newFacetValues.contains(prevFacetValue);
+                if (!isSelectedFacet) {
+                  continue;
                 }
+                if (!existInNewFacets) {
+                  prevFacet[i].count = 0;
+                } else {
+                  newFacet.counts
+                      .removeWhere((item) => item.value == prevFacetValue);
+                }
+                prevSelectedFacetItems.add(prevFacet[i]);
               }
               newFacet.counts = [...prevSelectedFacetItems, ...newFacet.counts];
               _facetState.facetCounts[index] = newFacet;
