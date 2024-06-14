@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:showcase_typesense_flutter/models/nba_player.dart';
-import 'package:showcase_typesense_flutter/models/nba_player_search_facet.dart';
-import 'package:showcase_typesense_flutter/utils/populate_filter_by.dart';
-import 'package:showcase_typesense_flutter/widgets/facet_list.dart';
-import 'package:showcase_typesense_flutter/widgets/nba_player_list_item.dart';
+import 'models/nba_player.dart';
+import 'models/nba_player_search_facet.dart';
+import 'utils/populate_filter_by.dart';
+import 'widgets/facet_list.dart';
+import 'widgets/nba_player_list_item.dart';
 import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
 import 'package:flutter/gestures.dart';
 import 'package:url_launcher/url_launcher.dart';

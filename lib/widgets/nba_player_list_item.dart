@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:showcase_typesense_flutter/models/nba_player.dart';
+import '../models/nba_player.dart';
 import '../utils/nba_team_color.dart';
 
 class NbaPlayerListItem extends StatelessWidget {

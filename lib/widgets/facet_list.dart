@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:showcase_typesense_flutter/models/nba_player_search_facet.dart';
+import '../models/nba_player_search_facet.dart';
 
 class FacetList extends StatefulWidget {
   const FacetList({

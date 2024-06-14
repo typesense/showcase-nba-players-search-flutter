@@ -28,7 +28,7 @@ class FacetCountItem {
     required this.value,
   });
 
-  int count;
+  num count;
   final String value;
 
   factory FacetCountItem.fromJson(Map<String, dynamic> json) =>
