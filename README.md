@@ -29,6 +29,7 @@ To run this project locally, make sure you have flutter SDK installed:
 
 ```shell
 cd cli
+flutter pub get
 #Start typesense server
 docker compose up
 
@@ -38,7 +39,8 @@ dart index_typesense.dart
 
 Start developing
 ```shell
- flutter run --dart-define-from-file=.env
+flutter pub get
+flutter run --dart-define-from-file=.env
 ```
 
 ## Environment
@@ -46,7 +48,7 @@ Start developing
 Set env variables in `.env` file to point the app to the Typesense Cluster
 
 ```env
-TYPESENSE_HOST=localhost #use your internet IPv4 address when developing on mobile
+TYPESENSE_HOST=localhost # use your internet IPv4 address when developing on mobile
 TYPESENSE_PORT=8108
 TYPESENSE_PROTOCOL=http
 TYPESENSE_SEARCH_ONLY_API_KEY=xyz
