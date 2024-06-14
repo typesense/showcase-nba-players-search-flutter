@@ -1,0 +1,12 @@
+name: index_typesense
+description: 'index data into typesense server'
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.4.1 <4.0.0'
+
+dev_dependencies:
+  typesense: ^0.5.1
+  dotenv: ^4.2.0

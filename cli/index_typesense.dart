@@ -1,39 +1,44 @@
-// ignore_for_file: avoid_print
+// ignore_for_file: avoid_print, constant_identifier_names
+
 import 'package:typesense/typesense.dart';
 import 'dart:io';
+import 'package:dotenv/dotenv.dart';
 
 void main() async {
   const collectionName = 'nba_players';
-  final config = Configuration(
-    // Api key
-    'xyz',
+
+  var env = DotEnv(includePlatformEnvironment: true)..load(['../.env']);
+
+  final typesenseClient = Client(Configuration(
+    env['TYPESENSE_ADMIN_API_KEY'] ?? 'asd',
     nodes: {
       Node.withUri(
         Uri(
-          scheme: 'http',
-          host: 'localhost',
-          port: 8108,
+          scheme: env['TYPESENSE_PROTOCOL'] ?? 'asd',
+          host: env['TYPESENSE_HOST'] ?? 'asd',
+          port: int.parse(env['TYPESENSE_PORT'] ?? 'asd'),
         ),
       ),
     },
     numRetries: 3, // A total of 4 tries (1 original try + 3 retries)
     connectionTimeout: const Duration(seconds: 2),
-  );
-
-  final client = Client(config);
+  ));
 
   try {
-    await client.collection(collectionName).retrieve();
+    await typesenseClient.collection(collectionName).retrieve();
     print('Found existing collection of $collectionName');
+    if (env['FORCE_REINDEX'] != 'true') {
+      return print('FORCE_REINDEX is not enabled. Canceling...');
+    }
     print('Deleting collection');
-    await client.collection(collectionName).delete();
+    await typesenseClient.collection(collectionName).delete();
   } catch (e) {
     print(e);
   }
 
   print('Creating schema...');
 
-  await client.collections.create(Schema(
+  await typesenseClient.collections.create(Schema(
     collectionName,
     {
       Field('player_name', type: Type.string),
@@ -47,7 +52,7 @@ void main() async {
 
   final file = await getFile('data/nba_players.jsonl');
   try {
-    final returnData = await client
+    final returnData = await typesenseClient
         .collection(collectionName)
         .documents
         .importJSONL(file.readAsStringSync());

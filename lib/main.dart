@@ -5,10 +5,10 @@ import 'package:showcase_typesense_flutter/models/nba_player_search_facet.dart';
 import 'package:showcase_typesense_flutter/utils/populate_filter_by.dart';
 import 'package:showcase_typesense_flutter/widgets/facet_list.dart';
 import 'package:showcase_typesense_flutter/widgets/nba_player_list_item.dart';
-import 'package:typesense/typesense.dart';
 import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
 import 'package:flutter/gestures.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'utils/typesense.dart';
 
 void main() {
   runApp(const MyApp());
@@ -51,7 +51,7 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  final GlobalKey<ScaffoldState> _key = GlobalKey(); // Create a key
+  final GlobalKey<ScaffoldState> _key = GlobalKey();
 
   final _searchInputController = TextEditingController();
 
@@ -61,30 +61,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   final _pagingController = PagingController<int, NBAPlayer>(firstPageKey: 1);
 
-  final client = Client(Configuration(
-    // Api key
-    'xyz',
-    nodes: {
-      Node.withUri(
-        Uri(
-          scheme: 'http',
-          host: '192.168.1.8', // replace with your wifi IPV4 address
-          port: 8108,
-        ),
-      ),
-    },
-    numRetries: 3, // A total of 4 tries (1 original try + 3 retries)
-    connectionTimeout: const Duration(seconds: 2),
-  ));
-
   final _facetState = FacetState();
-
-  void search() => setState(() {
-        query = _searchInputController.text;
-        _facetState.filterBy = '';
-        _facetState.filterState.clear();
-        _pagingController.refresh();
-      });
 
   @override
   void initState() {
@@ -94,6 +71,13 @@ class _MyHomePageState extends State<MyHomePage> {
       _fetchPage(pageKey);
     });
   }
+
+  void search() => setState(() {
+        query = _searchInputController.text;
+        _facetState.filterBy = '';
+        _facetState.filterState.clear();
+        _pagingController.refresh();
+      });
 
   (Map<String, dynamic>, Map<String, int?>) populateSearchRequests() {
     final searchRequests = {
@@ -132,7 +116,6 @@ class _MyHomePageState extends State<MyHomePage> {
     try {
       final (searchRequests, keyIndexPairs) = populateSearchRequests();
 
-      print(keyIndexPairs);
       final commonSearchParams = {
         'collection': 'nba_players',
         'q': query,
@@ -142,7 +125,7 @@ class _MyHomePageState extends State<MyHomePage> {
         'max_facet_values': '99',
       };
 
-      final res = await client.multiSearch
+      final res = await typesenseClient.multiSearch
           .perform(searchRequests, queryParams: commonSearchParams);
 
       final mainResult = res['results'][0];
@@ -158,17 +141,15 @@ class _MyHomePageState extends State<MyHomePage> {
         _pagingController.appendPage(newItems, nextPageKey);
       }
 
-      if (_facetState.filterState.isEmpty) {
-        setState(() {
+      setState(() {
+        if (_facetState.filterState.isEmpty) {
           _facetState.facetCounts =
               mainResult['facet_counts'].map<FacetCount>((item) {
             final facetCount = FacetCount.fromJson(item);
             _facetState.filterState[facetCount.fieldName] = {};
             return facetCount;
           }).toList();
-        });
-      } else {
-        setState(() {
+        } else {
           keyIndexPairs.forEach((key, value) {
             final index = _facetState.facetCounts
                 .indexWhere((item) => item.fieldName == key);
@@ -204,11 +185,10 @@ class _MyHomePageState extends State<MyHomePage> {
               _facetState.facetCounts[index] = newFacet;
             }
           });
-        });
-      }
+        }
+      });
     } catch (error) {
       _pagingController.error = error;
-      print(error);
     }
   }
 
@@ -223,53 +203,57 @@ class _MyHomePageState extends State<MyHomePage> {
         preferredSize: const Size.fromHeight(100),
         child: appBar(context),
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 768),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Container(
-                margin: const EdgeInsets.only(left: 16, right: 16, bottom: 14),
-                child: TextField(
-                  controller: _searchInputController,
-                  onSubmitted: (String value) => search(),
-                  decoration: InputDecoration(
-                    fillColor: Theme.of(context).colorScheme.surface,
-                    filled: true,
-                    prefixIcon: Padding(
-                      padding: const EdgeInsets.only(
-                          top: 12, bottom: 12, left: 14, right: 14),
-                      child: SvgPicture.asset('assets/icons/Search.svg'),
-                    ),
-                    suffixIcon: Padding(
-                      padding: const EdgeInsets.all(4),
-                      child: IconButton(
-                        icon: SvgPicture.asset('assets/icons/Filter.svg'),
-                        onPressed: () => _key.currentState!.openEndDrawer(),
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(width: 1.5),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(width: 1.5),
-                    ),
-                    hintText: 'Type in an NBA player name...',
+      body: appBody(context),
+    );
+  }
+
+  Center appBody(BuildContext context) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 768),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              margin: const EdgeInsets.only(left: 16, right: 16, bottom: 14),
+              child: TextField(
+                controller: _searchInputController,
+                onSubmitted: (String value) => search(),
+                decoration: InputDecoration(
+                  fillColor: Theme.of(context).colorScheme.surface,
+                  filled: true,
+                  prefixIcon: Padding(
+                    padding: const EdgeInsets.only(
+                        top: 12, bottom: 12, left: 14, right: 14),
+                    child: SvgPicture.asset('assets/icons/Search.svg'),
                   ),
-                  style: const TextStyle(
-                    fontSize: 14,
+                  suffixIcon: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: IconButton(
+                      icon: SvgPicture.asset('assets/icons/Filter.svg'),
+                      onPressed: () => _key.currentState!.openEndDrawer(),
+                    ),
                   ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(width: 1.5),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(width: 1.5),
+                  ),
+                  hintText: 'Type in an NBA player name...',
+                ),
+                style: const TextStyle(
+                  fontSize: 14,
                 ),
               ),
-              Expanded(
-                child: _infiniteHitsListView(context),
-              )
-            ],
-          ),
+            ),
+            Expanded(
+              child: _infiniteHitsListView(context),
+            )
+          ],
         ),
       ),
     );
