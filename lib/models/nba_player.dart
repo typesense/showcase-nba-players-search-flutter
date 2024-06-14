@@ -35,8 +35,8 @@ class NBAPlayer {
   final double weight;
   final String draftYear;
 
-  final double gp;
-  final double pts;
-  final double reb;
-  final double ast;
+  final num gp;
+  final num pts;
+  final num reb;
+  final num ast;
 }
